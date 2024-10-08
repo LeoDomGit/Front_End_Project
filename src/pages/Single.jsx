@@ -159,6 +159,7 @@ function Single() {
             type: "success",
             message: res.data.msg,
           });
+          setComments(res.data.data);
           handleCloseModal();
         } else {
           notyf.open({

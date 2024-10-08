@@ -2,14 +2,14 @@ import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css"; // Đảm bảo đã cài đặt và nhập Bootstrap
 
 // Component hiển thị một bình luận
-const Commentt = ({ name, comment }) => (
-	<div className="card mb-2">
-		<div className="card-body">
-			<h5 className="card-title">{name}</h5>
-			<p className="card-text">{comment}</p>
-		</div>
-	</div>
-);
+// const Commentt = ({ name, comment }) => (
+// 	<div className="card mb-2">
+// 		<div className="card-body">
+// 			<h5 className="card-title">{name}</h5>
+// 			<p className="card-text">{comment}</p>
+// 		</div>
+// 	</div>
+// );
 
 // Component hiển thị danh sách bình luận và form thêm bình luận
 const CommentList = ({ comment }) => {
