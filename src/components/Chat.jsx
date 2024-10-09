@@ -66,7 +66,7 @@ const Chat = () => {
     });
 
     const apiRequestBody = {
-      "model": "gpt-3.5-turbo",
+      "model": "GPT-4o mini",
       "messages": [
         { role: "system", content: "I'm a Student using ChatGPT for learning" },
         ...apiMessages,
