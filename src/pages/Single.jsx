@@ -70,6 +70,18 @@ function Single() {
     ],
   });
 
+  // Hàm tính ngày trước
+  const calculateDaysAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Hôm nay";
+    if (diffDays === 1) return "1 ngày trước";
+    return `${diffDays} ngày trước`;
+  };
+
   useEffect(() => {
     fetch(process.env.REACT_APP_API_URL + "products/" + id)
       .then((res) => res.json())
@@ -80,9 +92,30 @@ function Single() {
         setProduct(res.product);
         setGallery(res.medias);
         setLinks(res.links);
-        setComments(res.product.comments);
+        setComments(buildCommentTree(res.product.comments));
       });
   }, [id]);
+
+  const buildCommentTree = (comments) => {
+    const commentMap = {};
+    const roots = [];
+
+    // Xây dựng map để dễ dàng truy cập bình luận
+    comments.forEach((comment) => {
+      commentMap[comment.id] = { ...comment, children: [] };
+    });
+
+    // Liên kết bình luận con vào bình luận cha
+    comments.forEach((comment) => {
+      if (comment.id_parent) {
+        commentMap[comment.id_parent].children.push(commentMap[comment.id]);
+      } else {
+        roots.push(commentMap[comment.id]);
+      }
+    });
+
+    return roots;
+  };
 
   const handleShowModal = () => setShowModal(true);
   const handleCloseModal = () => setShowModal(false);
@@ -149,7 +182,7 @@ function Single() {
           headers: {
             Authorization: `Bearer ${_token}`,
           },
-        }
+        },
       )
       .then((res) => {
         if (res.data.check == true) {
@@ -187,6 +220,7 @@ function Single() {
             type: "success",
             message: res.data.msg,
           });
+          location.reload(true);
         } else {
           notyf.open({
             type: "error",
@@ -198,6 +232,70 @@ function Single() {
         console.log(err);
       });
   };
+
+  const renderComments = (comment, index) => {
+    return (
+      <>
+        <div key={index} className={"row my-3" + (comment.id_parent ? " ps-2" : "")}>
+          <div className="col-auto">
+            <img src="https://via.placeholder.com/50" alt="Avatar" className="rounded-circle me-3" />
+          </div>
+          <div className="col-8">
+            <div>
+              <div className="d-flex justify-content-between">
+                <h6 className="mb-1 fw-bold">{comment.customer ? comment.customer.name : comment.user.name}</h6>
+                <small className="text-muted text-end">{calculateDaysAgo(comment.created_at)}</small>
+              </div>
+              <p className="small mb-2">{comment?.comment}</p>
+              <div className="d-flex align-items-center">
+                <span className="badge bg-secondary me-2">Thích</span>
+                <a className="text-decoration-none small" onClick={() => setReplyingTo(comment)}>
+                  Trả lời
+                </a>
+                {comment.customer?.id === Number(idCustomer) && (
+                  <a className="text-decoration-none small text-end text-danger ms-2" onClick={() => handleDeleteComment(comment.id)}>
+                    Xóa bình luận
+                  </a>
+                )}
+                {/* <small className="text-muted ms-2">Xem 1 câu trả lời</small> */}
+              </div>
+            </div>
+          </div>
+
+          {replyingTo === comment && (
+            <>
+              <div className="col-12">
+                <div className="container my-4">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleComment(e, comment.id);
+                    }}
+                  >
+                    <div className="alert alert-info mt-4">
+                      Đang trả lời {replyingTo.customer ? replyingTo.customer.name : replyingTo.user.name}
+                      <button type="button" className="btn-close" aria-label="Close" onClick={() => setReplyingTo(null)}></button>
+                    </div>
+                    <div className="mb-3">
+                      <textarea className="form-control" placeholder="Nhập bình luận của bạn" rows="3" onChange={(e) => setReply(e.target.value)} required></textarea>
+                    </div>
+                    <button type="submit" className="btn btn-primary">
+                      Gửi bình luận
+                    </button>
+                    <button type="button" className="btn btn-danger ms-3" onClick={() => setReplyingTo(null)}>
+                      Hủy
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </>
+          )}
+          {comment.children.length > 0 && <div className="ms-4">{comment.children.map((child, index) => renderComments(child, index))}</div>}
+        </div>
+      </>
+    );
+  };
+
   return (
     <>
       {!product && (
@@ -221,7 +319,7 @@ function Single() {
       {product && (
         <>
           <Helmet>
-            <title>{product.name}</title>
+            <title>{product.name || "Product"} </title>
             <meta name="description" content={product.name} />
           </Helmet>
           <Header />
@@ -393,58 +491,8 @@ function Single() {
                     </form>
 
                     {/* Danh sách bình luận */}
-                    <div className="container-fluid">
-                      {comments.length > 0 &&
-                        comments.map((comment, index) => (
-                          <>
-                            <div key={index} className={"row mb-3" + (comment.id_parent ? " ps-5" : "")}>
-                              <div className="col-auto">
-                                <img src="https://via.placeholder.com/50" alt="Avatar" className="rounded-circle me-3" />
-                              </div>
-                              <div className="col">
-                                <div>
-                                  <div className="d-flex justify-content-between">
-                                    <h6 className="mb-1 fw-bold">{comment.id_customer ? comment.id_customer : comment.id_user}</h6>
-                                    <small className="text-muted">2 ngày trước</small>
-                                  </div>
-                                  <p className="small mb-2">{comment?.comment}</p>
-                                  <div className="d-flex align-items-center">
-                                    <span className="badge bg-secondary me-2">Thích</span>
-                                    <a className="text-decoration-none small" onClick={() => setReplyingTo(comment)}>
-                                      Trả lời
-                                    </a>
-                                    {(comment.id_customer === Number(idCustomer) || comment.id_user === Number(idCustomer)) && (
-                                      <a className="text-decoration-none small text-end text-danger ms-2" onClick={() => handleDeleteComment(comment.id_customer ? comment.id_customer : comment.id_user)}>
-                                        Xóa bình luận
-                                      </a>
-                                    )}
-                                    {/* <small className="text-muted ms-2">Xem 1 câu trả lời</small> */}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {replyingTo === comment && (
-                                <form
-                                  className="container-fluid my-4"
-                                  onSubmit={(e) => {
-                                    e.preventDefault();
-                                    handleComment(e, comment.id_customer ? comment.id_customer : comment.id_user);
-                                  }}
-                                >
-                                  <div className="mb-3">
-                                    <textarea className="form-control" placeholder="Nhập bình luận của bạn" rows="3" onChange={(e) => setReply(e.target.value)} required></textarea>
-                                  </div>
-                                  <button type="submit" className="btn btn-primary">
-                                    Gửi bình luận
-                                  </button>
-                                  <button type="button" className="btn btn-danger ms-3" onClick={() => setReplyingTo(null)}>
-                                    Hủy
-                                  </button>
-                                </form>
-                              )}
-                            </div>
-                          </>
-                        ))}
+                    <div className="container-fluid" style={{ maxWidth: 1238, maxHeight: 720, overflow: "scroll" }}>
+                      {comments.length > 0 && comments.map((comment, index) => renderComments(comment, index))}
                     </div>
                     {/* Danh sách bình luận */}
                   </div>
